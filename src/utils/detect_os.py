@@ -1,185 +1,180 @@
 """
-Детектор операционной системы
+Улучшенный детектор операционной системы по сетевым отпечаткам
 """
 
 from collections import defaultdict
 from difflib import SequenceMatcher
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
-# Расширенная база данных отпечатков ОС
-OS_FINGERPRINTS = {
+from scapy.all import IP, TCP
+
+# Расширенная база данных отпечатков ОС с весами признаков
+OS_DATABASE = {
     "Windows 10/11": {
-        "ttl": 128,
-        "window": [8192, 64240, 65535],
-        "window_scaling": [7, 8],
-        "options": ["MSS", "NOP", "NOP", "SACK", "NOP", "WScale"],
-        "options_order": True,
-        "mss_values": [1460],
-        "df_flag": True,
-        "response_to_fin": False,
-        "response_to_null": False,
-        "ip_id_behavior": "random",
-        "timestamp": False,
-        "ecn_support": False,
-        "quirks": {"bad_checksum": False, "zero_window_probe": True},
+        "features": {
+            "initial_ttl": (128, 0.15),
+            "window_size": ([8192, 64240, 65535], 0.15),
+            "tcp_options": (["MSS", "NOP", "NOP", "SACK", "NOP", "WScale"], 0.25),
+            "options_order": (True, 0.1),
+            "window_scaling": ([7, 8], 0.05),
+            "mss_value": ([1460], 0.05),
+            "df_flag": (True, 0.05),
+            "timestamp": (False, 0.05),
+            "ecn_support": (False, 0.05),
+            "quirks": ({"zero_window_probe": True}, 0.1),
+        }
     },
     "Linux (ядро 5.x)": {
-        "ttl": 64,
-        "window": [5840, 5720, 29200],
-        "window_scaling": [6, 7],
-        "options": ["MSS", "SACK", "TS", "NOP", "WScale"],
-        "options_order": True,
-        "mss_values": [1460],
-        "df_flag": True,
-        "response_to_fin": True,
-        "response_to_null": True,
-        "ip_id_behavior": "random",
-        "timestamp": True,
-        "ecn_support": True,
-        "quirks": {"bad_checksum": False, "zero_window_probe": False},
+        "features": {
+            "initial_ttl": (64, 0.15),
+            "window_size": ([5840, 5720, 29200], 0.15),
+            "tcp_options": (["MSS", "SACK", "TS", "NOP", "WScale"], 0.25),
+            "options_order": (True, 0.1),
+            "window_scaling": ([6, 7], 0.05),
+            "mss_value": ([1460], 0.05),
+            "df_flag": (True, 0.05),
+            "timestamp": (True, 0.05),
+            "ecn_support": (True, 0.05),
+            "quirks": ({"zero_window_probe": False}, 0.1),
+        }
     },
-    # ... другие ОС
+    "macOS 12+": {
+        "features": {
+            "initial_ttl": (64, 0.15),
+            "window_size": ([65535], 0.15),
+            "tcp_options": (["MSS", "NOP", "WScale", "NOP", "NOP", "SACK"], 0.25),
+            "options_order": (True, 0.1),
+            "window_scaling": ([6], 0.05),
+            "mss_value": ([1460], 0.05),
+            "df_flag": (True, 0.05),
+            "timestamp": (True, 0.05),
+            "ecn_support": (True, 0.05),
+            "quirks": ({"zero_window_probe": False}, 0.1),
+        }
+    },
 }
 
 
-async def extract_packet_features(response) -> Dict:
-    """Извлечение всех возможных признаков из пакета"""
+async def extract_features(response) -> Dict:
+    """Извлекает все возможные признаки из сетевого пакета"""
     features = defaultdict(lambda: None)
 
     if not response or not response.haslayer(TCP):
         return features
 
-    # Базовые TCP/IP параметры
-    features["ttl"] = response.ttl
-    features["window"] = response.getlayer(TCP).window
-    features["flags"] = response.getlayer(TCP).flags
+    try:
+        # Базовые параметры IP
+        if response.haslayer(IP):
+            features["initial_ttl"] = response.ttl
+            features["df_flag"] = bool(response.getlayer(IP).flags.DF)
+            features["ip_id"] = response.getlayer(IP).id
 
-    # TCP опции
-    options = []
-    for opt in response.getlayer(TCP).options:
-        if isinstance(opt, tuple):
-            options.append(opt[0])
-            if opt[0] == "MSS":
-                features["mss"] = opt[1]
-            elif opt[0] == "WScale":
-                features["wscale"] = opt[1]
-            elif opt[0] == "Timestamp":
-                features["timestamp"] = True
-            elif opt[0] == "SAckOK":
-                features["sack"] = True
-            elif opt[0] == "ECN":
-                features["ecn"] = True
+        # Параметры TCP
+        tcp = response.getlayer(TCP)
+        features["window_size"] = tcp.window
+        features["flags"] = tcp.flags
 
-    features["options"] = options
-    features["options_str"] = ",".join(options)
+        # Анализ TCP опций
+        options = []
+        for opt in tcp.options:
+            if isinstance(opt, tuple):
+                opt_name, opt_value = opt[0], opt[1] if len(opt) > 1 else None
+                options.append(opt_name)
 
-    # IP параметры
-    if response.haslayer(IP):
-        features["df_flag"] = response.getlayer(IP).flags.DF
-        features["ip_id"] = response.getlayer(IP).id
+                if opt_name == "MSS":
+                    features["mss_value"] = opt_value
+                elif opt_name == "WScale":
+                    features["window_scaling"] = opt_value
+                elif opt_name == "Timestamp":
+                    features["timestamp"] = True
+                elif opt_name == "SAckOK":
+                    features["sack"] = True
+                elif opt_name == "ECN":
+                    features["ecn_support"] = True
+
+        features["tcp_options"] = options
+        features["options_str"] = ",".join(options)
+
+    except Exception as e:
+        print(f"Ошибка при извлечении признаков: {e}")
 
     return features
 
 
-def calculate_feature_similarity(
-    observed: Dict, reference: Dict, feature: str, weight: float = 1.0
-) -> float:
-    """Расчет коэффициента схожести для конкретного признака"""
-    if feature not in reference:
-        return 0.0
+def calculate_match_score(observed: Dict, os_profile: Dict) -> float:
+    """Вычисляет процент совпадения с профилем ОС"""
+    total_score = 0.0
+    max_possible_score = 0.0
 
-    obs_val = observed.get(feature)
-    ref_val = reference[feature]
+    for feature, (expected_value, weight) in os_profile["features"].items():
+        observed_value = observed.get(feature)
+        max_possible_score += weight
 
-    # Для числовых значений
-    if isinstance(ref_val, (int, float, list)):
-        if isinstance(ref_val, list):
-            if obs_val in ref_val:
-                return weight
-            # Для window_scaling ищем ближайшее значение
-            if feature == "window_scaling":
-                closest = min(ref_val, key=lambda x: abs(x - obs_val))
-                diff = 1 - min(abs(obs_val - closest) / max(1, closest), 1.0)
-                return diff * weight
-            return 0.0
-        else:
-            return weight if obs_val == ref_val else 0.0
+        if observed_value is None:
+            continue
 
-    # Для булевых значений
-    elif isinstance(ref_val, bool):
-        return weight if obs_val == ref_val else 0.0
+        # Для числовых значений
+        if isinstance(expected_value, (int, float)):
+            if observed_value == expected_value:
+                total_score += weight
 
-    # Для строк (TCP options)
-    elif feature == "options_str":
-        return SequenceMatcher(None, obs_val, ref_val).ratio() * weight
+        # Для списков значений
+        elif isinstance(expected_value, list):
+            if observed_value in expected_value:
+                total_score += weight
+            elif feature in ["window_size", "window_scaling"]:
+                # Частичное совпадение для размеров окна
+                closest = min(expected_value, key=lambda x: abs(x - observed_value))
+                similarity = 1 - min(abs(observed_value - closest) / max(1, closest), 1)
+                total_score += weight * similarity
 
-    # Для списков (порядок опций)
-    elif feature == "options" and reference.get("options_order", False):
-        if len(obs_val) != len(ref_val):
-            return 0.0
-        return weight if obs_val == ref_val else 0.0
+        # Для строк (TCP options)
+        elif feature == "options_str":
+            similarity = SequenceMatcher(
+                None, observed_value, ",".join(expected_value)
+            ).ratio()
+            total_score += weight * similarity
 
-    return 0.0
+        # Для булевых значений
+        elif isinstance(expected_value, bool):
+            if observed_value == expected_value:
+                total_score += weight
+
+        # Для особенностей (quirks)
+        elif feature == "quirks":
+            quirk_matches = 0
+            for quirk, quirk_value in expected_value.items():
+                if observed.get(quirk) == quirk_value:
+                    quirk_matches += 1
+            total_score += weight * (quirk_matches / max(1, len(expected_value)))
+
+    return (total_score / max_possible_score) if max_possible_score > 0 else 0.0
 
 
-async def detect_os(response) -> Tuple[str, float, Dict]:
-    """Определение ОС с максимальным количеством параметров"""
+async def detect_os(response) -> List[Tuple[str, float]]:
+    """
+    Определяет наиболее вероятные ОС по ответу на SYN-сканирование
+
+    Возвращает:
+        List[Tuple[str, float]]: Список пар (название ОС, процент совпадения),
+                                отсортированный по убыванию вероятности
+    """
     if not response or not response.haslayer(TCP):
-        return "Unknown OS", 0.0, {}
+        return [("Unknown OS", 0.0)]
 
-    observed = await extract_packet_features(response)
-    best_match = ("Unknown OS", 0.0, {})
+    observed_features = await extract_features(response)
+    results = []
 
-    # Веса для различных признаков (сумма = 1.0)
-    feature_weights = {
-        "ttl": 0.15,
-        "window": 0.15,
-        "window_scaling": 0.05,
-        "options_str": 0.2,
-        "options": 0.1,
-        "mss": 0.05,
-        "df_flag": 0.05,
-        "response_to_fin": 0.05,
-        "response_to_null": 0.05,
-        "timestamp": 0.05,
-        "ecn_support": 0.05,
-        "quirks": 0.05,
-    }
+    for os_name, os_profile in OS_DATABASE.items():
+        print(observed_features)
+        score = calculate_match_score(observed_features, os_profile)
+        if score > 0:  # Игнорируем нулевые совпадения
+            results.append((os_name, round(score * 100, 2)))
 
-    for os_name, os_data in OS_FINGERPRINTS.items():
-        total_similarity = 0.0
+    # Сортируем по убыванию процента совпадения
+    results.sort(key=lambda x: x[1], reverse=True)
+    max_scr = max([i[1] for i in results])
+    results = [(i[0], i[1] / max_scr) for i in results]
 
-        # Считаем схожесть по всем параметрам
-        for feature, weight in feature_weights.items():
-            if feature == "quirks":
-                # Особые случаи обрабатываем отдельно
-                quirk_similarity = 0.0
-                for quirk, value in os_data.get("quirks", {}).items():
-                    if observed.get(quirk) == value:
-                        quirk_similarity += weight / len(os_data["quirks"])
-                total_similarity += quirk_similarity
-            else:
-                total_similarity += calculate_feature_similarity(
-                    observed, os_data, feature, weight
-                )
-
-        # Нормализуем до 1.0
-        total_similarity = min(total_similarity, 1.0)
-
-        if total_similarity > best_match[1]:
-            best_match = (
-                os_name,
-                total_similarity,
-                {
-                    "matched_features": [
-                        f
-                        for f in feature_weights
-                        if calculate_feature_similarity(observed, os_data, f, 1.0) > 0.8
-                    ]
-                },
-            )
-
-    # Возвращаем только если уверенность > 65%
-    if best_match[1] > 0.65:
-        return best_match
-    return "Unknown OS", 0.0, {}
+    # Если ничего не найдено, возвращаем Unknown
+    return results if results else [("Unknown OS", 0.0)]

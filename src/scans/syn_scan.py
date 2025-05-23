@@ -2,12 +2,18 @@
 
 import asyncio
 
-from scapy.all import IP, TCP, sr1
+from scapy.all import IP, TCP, sr1  # type: ignore
+
+from utils import detect_os
 
 
 async def syn(
-    target_ip: str, port: str | int, answer: bool = True, print_console: bool = True
-) -> tuple[str, str, bool]:
+    target_ip: str,
+    port: str | int,
+    answer: bool = True,
+    scan_os: bool = False,
+    print_console: bool = True,
+) -> tuple[str, str | int, bool]:
     """
     SYN сканирование
     """
@@ -26,9 +32,11 @@ async def syn(
     if response is None and print_console:
         print(f"[?] Порт {port} — фильтруется (нет ответа)")
     elif response.haslayer(TCP):
-        if response.getlayer(TCP).flags == 0x12:  # SYN + ACK
+        if response.getlayer(TCP).flags == 0x12:
             if print_console:
                 print(f"[+] Порт {port} — открыт")
+                if scan_os:
+                    print(await detect_os(response))
 
             if answer:
                 rst = TCP(
