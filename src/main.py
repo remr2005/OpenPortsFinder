@@ -2,12 +2,12 @@
 
 from asyncio import run
 
-from scans import syn
+from scans import null
 
 
 def main():
     """Main function"""
-    print(run(syn("192.168.0.106", "135")))
+    print(run(null("192.168.0.106", "135")))
 
 
 if __name__ == "__main__":
