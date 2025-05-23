@@ -2,9 +2,11 @@
 
 import asyncio
 
-from scapy.all import IP, TCP, sr1  # type: ignore
+from scapy.all import IP, TCP, conf, sr1
 
 from utils import detect_os
+
+conf.verb = 0
 
 
 async def syn(
