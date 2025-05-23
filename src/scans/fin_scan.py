@@ -33,7 +33,5 @@ async def fin(
                 )
             return target_ip, port, True
     elif response.haslayer(TCP) and response.getlayer(TCP).flags == 0x14:
-        if print_console:
-            print(f"[-] Порт {port} — закрыт (FIN)")
         return target_ip, port, False
     return target_ip, port, False
