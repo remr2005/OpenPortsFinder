@@ -1,3 +1,7 @@
+"""
+Скан для нахождения открытых или фильтруемых портов
+"""
+
 import asyncio
 
 from scapy.all import ICMP, IP, TCP, conf, sr1
@@ -5,7 +9,7 @@ from scapy.all import ICMP, IP, TCP, conf, sr1
 conf.verb = 0
 
 
-async def ack_scan(
+async def ack(
     target_ip: str,
     port: str | int,
     print_console: bool = True,
