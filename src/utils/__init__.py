@@ -3,4 +3,4 @@
 """
 
 from .detect_os import detect_os
-from .mass_scan import async_mass_scan
+from .mass_scan import async_mass_scan, async_mass_scan_ICMP

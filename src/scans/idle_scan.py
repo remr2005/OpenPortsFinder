@@ -1,3 +1,7 @@
+"""
+Зомби скан
+"""
+
 import asyncio
 
 from scapy.all import IP, TCP, conf, sr1
@@ -5,7 +9,10 @@ from scapy.all import IP, TCP, conf, sr1
 conf.verb = 0
 
 
-async def idle(target_ip: str, zombie_ip: str, port: int) -> bool:
+async def idle(target_ip: str, port: int, zombie_ip: str) -> bool:
+    """
+    Скан с использованием хомби хоста
+    """
     ip_id_pkt = IP(dst=zombie_ip) / TCP(dport=80, flags="A")
     loop = asyncio.get_running_loop()
     resp1 = await loop.run_in_executor(None, lambda: sr1(ip_id_pkt, timeout=2))

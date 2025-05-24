@@ -1,3 +1,7 @@
+"""
+XMAS-скан
+"""
+
 import asyncio
 
 from scapy.all import ICMP, IP, TCP, conf, sr1

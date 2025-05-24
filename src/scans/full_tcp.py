@@ -1,3 +1,7 @@
+"""
+TCP сканирование
+"""
+
 import socket
 from typing import Tuple
 

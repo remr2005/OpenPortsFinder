@@ -82,7 +82,6 @@ def scan_host(ip, ports=DEFAULT_PORTS):
     results = []
     for port in ports:
         banner = grab_banner(ip, port)
-        print(f"[{ip}:{port}] => {banner}")
         if banner:
             service, version = extract_service_info(banner)
             if service:
@@ -92,6 +91,9 @@ def scan_host(ip, ports=DEFAULT_PORTS):
 
 
 def scan_network(target):
+    """
+    Ищет уязвимости по версии сервисов портов
+    """
     try:
         net = ipaddress.ip_network(target, strict=False)
     except ValueError:
@@ -107,8 +109,6 @@ def scan_network(target):
                 print(f"  Порт {port} — {service} {version}")
                 for cve in cves:
                     print(f"     ⚠️ {cve}")
-        else:
-            print(f"[-] {ip} — уязвимости не найдены")
 
     with ThreadPoolExecutor(max_workers=30) as executor:
         executor.map(scan_and_print, net.hosts())

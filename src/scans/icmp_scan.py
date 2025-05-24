@@ -1,3 +1,7 @@
+"""
+ICMP скан
+"""
+
 import asyncio
 
 from scapy.all import ICMP, IP, conf, sr1

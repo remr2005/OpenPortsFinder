@@ -166,7 +166,7 @@ async def detect_os(response) -> List[Tuple[str, float]]:
     results = []
 
     for os_name, os_profile in OS_DATABASE.items():
-        print(observed_features)
+        # print(observed_features)
         score = calculate_match_score(observed_features, os_profile)
         if score > 0:  # Игнорируем нулевые совпадения
             results.append((os_name, round(score * 100, 2)))
@@ -175,6 +175,5 @@ async def detect_os(response) -> List[Tuple[str, float]]:
     results.sort(key=lambda x: x[1], reverse=True)
     max_scr = max([i[1] for i in results])
     results = [(i[0], i[1] / max_scr) for i in results]
-
     # Если ничего не найдено, возвращаем Unknown
     return results if results else [("Unknown OS", 0.0)]
