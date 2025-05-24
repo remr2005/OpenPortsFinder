@@ -34,6 +34,6 @@ async def source_port_manipulation(
     if response and response.haslayer(TCP):
         if response.getlayer(TCP).flags == 0x12:
             if print_console:
-                print(f"[+] Порт {port} — открыт ")
+                print(f"[+] Порт {port} — открыт ", flush=True)
             return target_ip, port, True
     return target_ip, port, False

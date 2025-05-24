@@ -29,17 +29,17 @@ async def syn(
         response = await loop.run_in_executor(None, lambda: sr1(ip / syn, timeout=2))
     except OSError as e:
         if print_console:
-            print(f"[!] Ошибка отправки пакета на порт {port}: {e}")
+            print(f"[!] Ошибка отправки пакета на порт {port}: {e}", flush=True)
         return target_ip, port, False, OS_name
 
     if response is None and print_console:
-        print(f"[?] Порт {port} — фильтруется (нет ответа)")
+        print(f"[?] Порт {port} — фильтруется (нет ответа)", flush=True)
     elif response.haslayer(TCP):
         if response.getlayer(TCP).flags == 0x12:
             if scan_os:
                 OS_name = (await detect_os(response))[0][0]
             if print_console:
-                print(f"[+] Порт {port} — открыт " + OS_name)
+                print(f"[+] Порт {port} — открыт " + OS_name, flush=True)
 
             if answer:
                 rst = TCP(
@@ -51,5 +51,5 @@ async def syn(
                     print(f"[!] Ошибка отправки RST на порт {port}: {e}")
             return target_ip, port, True, OS_name
     elif print_console:
-        print(f"[!] Порт {port} — неожиданный ответ")
+        print(f"[!] Порт {port} — неожиданный ответ", flush=True)
     return target_ip, port, False, OS_name

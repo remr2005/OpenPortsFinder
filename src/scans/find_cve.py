@@ -1,3 +1,4 @@
+import asyncio
 import ipaddress
 import re
 import socket
@@ -9,7 +10,7 @@ vulners_api = vulners.VulnersApi(
     "KE701P85PZP7VTH6LJ71K9WZI13Z680T50M2QCTVI1SML6222SC727TVK58X9COA"
 )
 
-DEFAULT_PORTS = [21, 22, 25, 80, 110, 135, 139, 143, 443, 445]
+DEFAULT_PORTS = [22, 25, 80, 110, 135, 139, 143, 443, 445]
 
 BANNER_PATTERNS = [
     (r"Server: (\S+)/(.*)", "http"),
@@ -74,8 +75,9 @@ def extract_service_info(banner):
 
 def search_cve(service, version):
     query = f"{service} {version}" if version else service
-    results = vulners_api.search(query)
-    return [f"{r['id']} | {r['title']}" for r in results[:5]]
+    print(query)
+    results = vulners_api.search_cpe(query)
+    return f"{results['best_match']} | {results['cpe']}"
 
 
 def scan_host(ip, ports=DEFAULT_PORTS):
@@ -90,25 +92,32 @@ def scan_host(ip, ports=DEFAULT_PORTS):
     return results
 
 
-def scan_network(target):
+async def scan_network(target):
     """
     Ищет уязвимости по версии сервисов портов
     """
     try:
         net = ipaddress.ip_network(target, strict=False)
     except ValueError:
-        print(f"[!] Invalid target: {target}")
-        return
+        print(f"[!] Invalid target: {target}", flush=True)
+        return []
 
-    def scan_and_print(ip):
-        ip = str(ip)
-        result = scan_host(ip)
-        if result:
-            print(f"\n[+] {ip} — уязвимости:")
-            for port, service, version, cves in result:
-                print(f"  Порт {port} — {service} {version}")
-                for cve in cves:
-                    print(f"     ⚠️ {cve}")
+    results = []
 
+    def scan_and_collect(ip):
+        ip_str = str(ip)
+        host_results = scan_host(ip_str)
+        if host_results:
+            results.append((ip_str, host_results))
+
+    loop = asyncio.get_running_loop()
+    # Запускаем в executor, чтобы не блокировать основной поток
     with ThreadPoolExecutor(max_workers=30) as executor:
-        executor.map(scan_and_print, net.hosts())
+        await asyncio.gather(
+            *[
+                loop.run_in_executor(executor, scan_and_collect, ip)
+                for ip in net.hosts()
+            ]
+        )
+
+    return results
