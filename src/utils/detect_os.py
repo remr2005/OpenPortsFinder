@@ -56,7 +56,16 @@ OS_DATABASE = {
 
 
 async def extract_features(response) -> Dict:
-    """Извлекает все возможные признаки из сетевого пакета"""
+    """
+    Извлекает сетевые признаки из пакета TCP/IP для дальнейшей идентификации ОС.
+
+    Args:
+        response: Объект пакета (Scapy), содержащий сетевой ответ.
+
+    Returns:
+        Dict: Словарь с выявленными признаками и их значениями,
+              включая TTL, размер окна, TCP опции, флаги и особенности.
+    """
     features = defaultdict(lambda: None)
 
     if not response or not response.haslayer(TCP):
@@ -102,7 +111,17 @@ async def extract_features(response) -> Dict:
 
 
 def calculate_match_score(observed: Dict, os_profile: Dict) -> float:
-    """Вычисляет процент совпадения с профилем ОС"""
+    """
+    Сравнивает наблюдаемые признаки с профилем ОС и вычисляет коэффициент совпадения.
+
+    Args:
+        observed (Dict): Словарь с наблюдаемыми признаками из пакета.
+        os_profile (Dict): Профиль ОС с ожидаемыми значениями и весами признаков.
+
+    Returns:
+        float: Нормализованный коэффициент совпадения в диапазоне [0.0, 1.0],
+               где 1.0 — полное совпадение.
+    """
     total_score = 0.0
     max_possible_score = 0.0
 
@@ -153,11 +172,15 @@ def calculate_match_score(observed: Dict, os_profile: Dict) -> float:
 
 async def detect_os(response) -> List[Tuple[str, float]]:
     """
-    Определяет наиболее вероятные ОС по ответу на SYN-сканирование
+    Определяет наиболее вероятные операционные системы по сетевому ответу на SYN-запрос.
 
-    Возвращает:
-        List[Tuple[str, float]]: Список пар (название ОС, процент совпадения),
-                                отсортированный по убыванию вероятности
+    Args:
+        response: Объект пакета (Scapy) с ответом на TCP SYN.
+
+    Returns:
+        List[Tuple[str, float]]: Отсортированный список кортежей (название ОС,
+                                 относительная вероятность совпадения в диапазоне [0.0, 1.0]).
+                                 Если совпадений нет, возвращает [("Unknown OS", 0.0)].
     """
     if not response or not response.haslayer(TCP):
         return [("Unknown OS", 0.0)]
@@ -166,7 +189,6 @@ async def detect_os(response) -> List[Tuple[str, float]]:
     results = []
 
     for os_name, os_profile in OS_DATABASE.items():
-        # print(observed_features)
         score = calculate_match_score(observed_features, os_profile)
         if score > 0:  # Игнорируем нулевые совпадения
             results.append((os_name, round(score * 100, 2)))
@@ -175,5 +197,6 @@ async def detect_os(response) -> List[Tuple[str, float]]:
     results.sort(key=lambda x: x[1], reverse=True)
     max_scr = max([i[1] for i in results])
     results = [(i[0], i[1] / max_scr) for i in results]
+
     # Если ничего не найдено, возвращаем Unknown
     return results if results else [("Unknown OS", 0.0)]

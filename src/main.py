@@ -1,4 +1,4 @@
-"""Main file"""
+"""Main entry point for Python OpenPortsFinder - массовый асинхронный сканер портов с множеством методов."""
 
 import argparse
 import asyncio
@@ -42,7 +42,20 @@ SCAN_TYPES = {
 
 
 def parse_ports(port_str: str) -> List[int]:
-    """Парсинг портов: 80 / 80,443 / 1-100"""
+    """
+    Разбирает строку с портами в список чисел.
+
+    Поддерживаются форматы:
+    - Один порт: "80"
+    - Список портов через запятую: "80,443"
+    - Диапазон портов: "1-100"
+
+    Args:
+        port_str (str): Строка с портами.
+
+    Returns:
+        List[int]: Список портов.
+    """
     ports = []
     for part in port_str.split(","):
         if "-" in part:
@@ -54,7 +67,20 @@ def parse_ports(port_str: str) -> List[int]:
 
 
 def parse_targets(target_str: str) -> List[str]:
-    """Парсинг целей: 192.168.1.1 / 192.168.1.1,192.168.1.2 / 192.168.1.0/24"""
+    """
+    Разбирает строку с IP-адресами или подсетями в список отдельных IP.
+
+    Поддерживаются форматы:
+    - Одиночный IP: "192.168.1.1"
+    - Несколько IP через запятую: "192.168.1.1,192.168.1.2"
+    - Подсеть: "192.168.1.0/24"
+
+    Args:
+        target_str (str): Строка с целями.
+
+    Returns:
+        List[str]: Список IP-адресов.
+    """
     targets = []
     for part in target_str.split(","):
         if "/" in part:
@@ -67,7 +93,12 @@ def parse_targets(target_str: str) -> List[str]:
 
 async def main():
     """
-    Main function
+    Основная асинхронная функция для запуска сканирования.
+
+    Разбирает аргументы командной строки, настраивает параметры сканирования
+    и запускает соответствующий асинхронный метод сканирования.
+
+    Обрабатывает разные типы сканирования, включая ICMP и TCP/UDP.
     """
     parser = argparse.ArgumentParser(description="Python OpenPortsFinder")
     parser.add_argument(
@@ -84,7 +115,7 @@ async def main():
         "--scan-type",
         default="S",
         choices=SCAN_TYPES.keys(),
-        help="Тип сканирования: sS (SYN), sF (FIN), sU (UDP)",
+        help="Тип сканирования: S (SYN), F (FIN), U (UDP) и др.",
     )
     parser.add_argument(
         "--detect-os", action="store_true", help="Включить определение ОС"
@@ -92,19 +123,17 @@ async def main():
     parser.add_argument(
         "--send-rst",
         action="store_true",
-        help="Включить посылание RST в ответ, ради меньшей подозрительности",
+        help="Отправлять RST-пакеты в ответ для уменьшения подозрительности",
     )
-
     parser.add_argument(
         "--zombi-ip",
         default="",
-        help="IP зомби хоста для idle скана",
+        help="IP зомби-хоста для idle-сканирования",
     )
-
     parser.add_argument(
         "--false-port",
         default="53",
-        help="Ложный порт для сканирования с манипуляциями с портом",
+        help="Ложный порт для сканирования с манипуляцией портом",
     )
 
     args = parser.parse_args()
@@ -113,15 +142,19 @@ async def main():
         targets = parse_targets(args.target)
         scan_func = SCAN_TYPES[args.scan_type]
         dargs = []
+
         if args.zombi_ip:
             dargs.append(args.zombi_ip)
         elif args.false_port:
             dargs.append(args.false_port)
+
         if args.scan_type == "S":
             dargs = [args.send_rst, args.detect_os]
+
         print(
             f"Сканирование {args.target} (порты: {args.ports}) с использованием метода {args.scan_type}..."
         )
+
         if args.scan_type in ["IE", "IM", "IT", "CVE"]:
             await async_mass_scan_ICMP(targets, scan_func)
         else:

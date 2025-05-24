@@ -45,7 +45,7 @@ async def udp(
     response = await loop.run_in_executor(None, lambda: sr1(pkt, timeout=3, verbose=0))
     if response is None:
         if print_console:
-            print(f"[+] Порт {port} — открыт ", flush=True)
+            print(f"[+] Порт {port} по ip {target_ip} — открыт ", flush=True)
         return target_ip, port, True
     elif response.haslayer(ICMP) and response.getlayer(ICMP).type == 3:
         return target_ip, port, False

@@ -1,3 +1,5 @@
+"""Main entry point for Python OpenPortsFinder - массовый асинхронный сканер портов с множеством методов."""
+
 import asyncio
 import ipaddress
 import sys
@@ -52,7 +54,16 @@ SCAN_TYPES = {
 
 
 class ScanWindow(QWidget):
+    """
+    Основное окно приложения для сканирования портов и сетей.
+
+    Виджет предоставляет интерфейс для ввода цели сканирования, выбора типа
+    сканирования, настройки портов и дополнительных параметров, а также выводит
+    результаты сканирования.
+    """
+
     def __init__(self):
+        """Инициализация интерфейса и установка соединений событий."""
         super().__init__()
         self.setWindowTitle("Python OpenPortsFinder GUI")
 
@@ -136,13 +147,20 @@ class ScanWindow(QWidget):
         self.on_scan_type_changed(self.scan_type_combo.currentText())
 
     def on_scan_type_changed(self, scan_type):
-        # Порты нужны не для ICMP, CVE, idle (исправлено: для ID показываем порты)
+        """
+        Обновляет видимость и доступность элементов управления в зависимости от
+        выбранного типа сканирования.
+
+        Args:
+            scan_type (str): выбранный тип сканирования.
+        """
+        # Порты нужны не для ICMP, CVE; idle оставляем с портами
         show_ports = scan_type not in [
             "IE",
             "IM",
             "IT",
             "CVE",
-        ]  # убрал "ID" из списка скрытия портов
+        ]
         for i in range(self.ports_layout.count()):
             self.ports_layout.itemAt(i).widget().setVisible(show_ports)
         self.ports_layout.setEnabled(show_ports)
@@ -158,6 +176,17 @@ class ScanWindow(QWidget):
         self.send_rst_cb.setVisible(scan_type == "S")
 
     def parse_ports(self, port_str):
+        """
+        Парсит строку с портами в список чисел портов.
+
+        Поддерживаются форматы: "80", "80,443", "1-100".
+
+        Args:
+            port_str (str): строка с портами.
+
+        Returns:
+            list[int]: список портов.
+        """
         ports = []
         if not port_str:
             return ports
@@ -177,6 +206,17 @@ class ScanWindow(QWidget):
         return ports
 
     def parse_targets(self, target_str):
+        """
+        Парсит строку с целями сканирования в список IP-адресов.
+
+        Поддерживаются отдельные IP, диапазоны в формате сети (CIDR).
+
+        Args:
+            target_str (str): строка с целями.
+
+        Returns:
+            list[str]: список IP-адресов.
+        """
         targets = []
         for part in target_str.split(","):
             part = part.strip()
@@ -191,12 +231,23 @@ class ScanWindow(QWidget):
         return targets
 
     def log(self, text):
+        """
+        Добавляет строку в поле вывода логов.
+
+        Args:
+            text (str): текст для вывода.
+        """
         self.output.append(text)
 
     def clear_log(self):
+        """Очищает поле вывода логов."""
         self.output.clear()
 
     async def run_scan(self):
+        """
+        Запускает процесс сканирования в асинхронном режиме, используя выбранные
+        параметры и отображает результаты в логах.
+        """
         self.clear_log()
 
         target_str = self.target_edit.text().strip()
@@ -262,11 +313,13 @@ class ScanWindow(QWidget):
                         if scan_type == "S"
                         else ""
                     )
-                    # comment: )
         self.log("Сканирование завершено")
 
     def on_start(self):
-        # Запускаем асинхронное сканирование
+        """
+        Обработчик нажатия кнопки запуска сканирования — запускает асинхронную
+        задачу сканирования.
+        """
         asyncio.create_task(self.run_scan())
 
 
@@ -274,6 +327,12 @@ import qasync
 
 
 def main():
+    """
+    Точка входа в приложение.
+
+    Создаёт QApplication, главное окно, запускает цикл событий с поддержкой
+    asyncio.
+    """
     app = QApplication(sys.argv)
     window = ScanWindow()
     window.resize(700, 600)
