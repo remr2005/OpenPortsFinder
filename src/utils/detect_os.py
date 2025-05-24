@@ -21,27 +21,43 @@ OS_DATABASE = {
             "df_flag": (True, 0.05),
             "timestamp": (False, 0.05),
             "ecn_support": (False, 0.05),
-            "quirks": ({"zero_window_probe": True}, 0.1),
+            "quirks": (
+                {
+                    "zero_window_probe": True,
+                    "bad_checksum": False,
+                    "dont_fragment": True,
+                    "reserved_flag": False,
+                },
+                0.1,
+            ),
         }
     },
     "Linux (ядро 5.x)": {
         "features": {
             "initial_ttl": (64, 0.15),
-            "window_size": ([5840, 5720, 29200], 0.15),
+            "window_size": ([5840, 5720, 29200, 14600], 0.15),
             "tcp_options": (["MSS", "SACK", "TS", "NOP", "WScale"], 0.25),
             "options_order": (True, 0.1),
             "window_scaling": ([6, 7], 0.05),
-            "mss_value": ([1460], 0.05),
+            "mss_value": ([1460, 8960], 0.05),
             "df_flag": (True, 0.05),
             "timestamp": (True, 0.05),
             "ecn_support": (True, 0.05),
-            "quirks": ({"zero_window_probe": False}, 0.1),
+            "quirks": (
+                {
+                    "zero_window_probe": False,
+                    "bad_checksum": False,
+                    "dont_fragment": True,
+                    "reserved_flag": False,
+                },
+                0.1,
+            ),
         }
     },
     "macOS 12+": {
         "features": {
             "initial_ttl": (64, 0.15),
-            "window_size": ([65535], 0.15),
+            "window_size": ([65535, 16384], 0.15),
             "tcp_options": (["MSS", "NOP", "WScale", "NOP", "NOP", "SACK"], 0.25),
             "options_order": (True, 0.1),
             "window_scaling": ([6], 0.05),
@@ -49,7 +65,81 @@ OS_DATABASE = {
             "df_flag": (True, 0.05),
             "timestamp": (True, 0.05),
             "ecn_support": (True, 0.05),
-            "quirks": ({"zero_window_probe": False}, 0.1),
+            "quirks": (
+                {
+                    "zero_window_probe": False,
+                    "bad_checksum": False,
+                    "dont_fragment": True,
+                    "reserved_flag": False,
+                },
+                0.1,
+            ),
+        }
+    },
+    "FreeBSD 12+": {
+        "features": {
+            "initial_ttl": (64, 0.12),
+            "window_size": ([65535, 8760], 0.15),
+            "tcp_options": (["MSS", "SACK", "TS", "NOP", "WScale"], 0.25),
+            "options_order": (True, 0.12),
+            "window_scaling": ([4, 7], 0.05),
+            "mss_value": ([1460], 0.05),
+            "df_flag": (True, 0.04),
+            "timestamp": (True, 0.05),
+            "ecn_support": (False, 0.05),
+            "quirks": (
+                {
+                    "zero_window_probe": False,
+                    "bad_checksum": False,
+                    "dont_fragment": True,
+                    "reserved_flag": False,
+                },
+                0.08,
+            ),
+        }
+    },
+    "Android 11+": {
+        "features": {
+            "initial_ttl": (64, 0.14),
+            "window_size": ([29200, 5840, 87380], 0.15),
+            "tcp_options": (["MSS", "SACK", "TS", "NOP", "WScale"], 0.25),
+            "options_order": (True, 0.1),
+            "window_scaling": ([7], 0.05),
+            "mss_value": ([1460], 0.05),
+            "df_flag": (True, 0.05),
+            "timestamp": (True, 0.05),
+            "ecn_support": (True, 0.05),
+            "quirks": (
+                {
+                    "zero_window_probe": False,
+                    "bad_checksum": False,
+                    "dont_fragment": True,
+                    "reserved_flag": False,
+                },
+                0.09,
+            ),
+        }
+    },
+    "Cisco IOS": {
+        "features": {
+            "initial_ttl": (255, 0.15),
+            "window_size": ([4128], 0.2),
+            "tcp_options": (["MSS", "NOP", "WScale", "NOP", "SACK", "TS"], 0.25),
+            "options_order": (True, 0.15),
+            "window_scaling": ([7], 0.05),
+            "mss_value": ([1460], 0.04),
+            "df_flag": (True, 0.06),
+            "timestamp": (True, 0.04),
+            "ecn_support": (False, 0.03),
+            "quirks": (
+                {
+                    "zero_window_probe": False,
+                    "bad_checksum": True,
+                    "dont_fragment": True,
+                    "reserved_flag": False,
+                },
+                0.1,
+            ),
         }
     },
 }
