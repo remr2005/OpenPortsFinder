@@ -4,7 +4,7 @@
 
 import asyncio
 
-from scapy.all import ICMP, IP, TCP, conf, sr1
+from scapy.all import ICMP, IP, TCP, conf, sr1  # type: ignore
 
 conf.verb = 0
 
