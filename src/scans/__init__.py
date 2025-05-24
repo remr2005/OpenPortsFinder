@@ -3,6 +3,7 @@
 from .ack_scan import ack
 from .fin_scan import fin
 from .find_cve import scan_network
+from .full_tcp import tcp_scan
 from .icmp_scan import icmp_address_mask_scan, icmp_echo_scan, icmp_timestamp_scan
 from .idle_scan import idle
 from .null_scan import null

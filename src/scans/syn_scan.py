@@ -49,7 +49,7 @@ async def syn(
                     await loop.run_in_executor(None, lambda: sr1(ip / rst, timeout=1))
                 except OSError as e:
                     print(f"[!] Ошибка отправки RST на порт {port}: {e}")
-        return target_ip, port, True, OS_name
+            return target_ip, port, True, OS_name
     elif print_console:
         print(f"[!] Порт {port} — неожиданный ответ")
     return target_ip, port, False, OS_name
